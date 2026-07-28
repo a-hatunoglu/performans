@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Performans</title>
+    
+    <!-- PWA Bağlantıları -->
+    <link rel="manifest" href="manifest.json">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js');
+            });
+        }
+    </script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        :root {
+            --bg-color: #f2f2f7;
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --text-main: #000000;
+            --text-muted: #8e8e93;
+            --accent: #007aff;
+            --danger: #ff3b30;
+            --success: #34c759;
+            --glass-border: rgba(255, 255, 255, 0.5);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #000000;
+                --card-bg: rgba(28, 28, 30, 0.7);
+                --text-main: #ffffff;
+                --text-muted: #ebebf5;
+                --accent: #0a84ff;
+                --danger: #ff453a;
+                --success: #32d74b;
+                --glass-border: rgba(255, 255, 255, 0.1);
+            }
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: 90px;
+            padding-top: env(safe-area-inset-top);
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .bottom-nav {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .nav-item {
+            color: var(--text-muted);
+            transition: color 0.2s ease;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+        }
+
+        input, select, textarea {
+            background: var(--bg-color);
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 12px;
+            width: 100%;
+            font-size: 16px;
+            outline: none;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
+        }
+
+        button.primary {
+            background: var(--accent);
+            color: white;
+            border-radius: 14px;
+            padding: 14px;
+            font-weight: 600;
+            width: 100%;
+            transition: opacity 0.2s;
+        }
+
+        button.primary:active {
+            opacity: 0.7;
+        }
+
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .switch-checkbox:checked {
+            right: 0;
+            border-color: var(--success);
+        }
+        .switch-checkbox:checked + .switch-label {
+            background-color: var(--success);
+        }
+        .switch-checkbox:checked + .switch-label:after {
+            transform: translateX(100%);
+        }
+    </style>
+</head>
+<body>
+
+    <header class="px-6 pt-6 pb-2 sticky top-0 z-40 bg-[var(--bg-color)]/90 backdrop-blur-md">
+        <h1 id="page-title" class="text-3xl font-bold tracking-tight">Dashboard</h1>
+    </header>
+
+    <main class="px-4 pb-8">
+
+        <section id="view-dashboard" class="view-section active space-y-4">
+            
+            <div class="glass-card p-5">
+                <p class="text-sm text-[var(--text-muted)] font-medium mb-1">Bugün <span id="dash-date"></span></p>
+                <div class="flex items-end justify-between">
+                    <div>
+                        <h2 class="text-4xl font-bold" id="dash-sales">0 ₺</h2>
+                        <p class="text-sm text-[var(--text-muted)]">Günlük Satış</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xl font-semibold text-[var(--success)]" id="dash-daily-premium">+0 ₺</p>
+                        <p class="text-xs text-[var(--text-muted)]">Net Prim</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="glass-card p-4">
+                    <i class="ph ph-phone-call text-2xl text-[var(--accent)] mb-2"></i>
+                    <p class="text-2xl font-bold" id="dash-calls">0</p>
+                    <p class="text-xs text-[var(--text-muted)]">Çağrı</p>
+                </div>
+                <div class="glass-card p-4">
+                    <i class="ph ph-package text-2xl text-[var(--accent)] mb-2"></i>
+                    <p class="text-2xl font-bold" id="dash-packages">0</p>
+                    <p class="text-xs text-[var(--text-muted)]">Paket</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-5 space-y-3">
+                <h3 class="font-semibold text-lg border-b border-[var(--glass-border)] pb-2">Haftalık Durum</h3>
+                <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Ortalama Satış</span>
+                    <span class="font-medium" id="dash-week-avg">0 ₺</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Ödenecek Prim</span>
+                    <span class="font-medium text-[var(--success)]" id="dash-week-premium">0 ₺</span>
+                </div>
+            </div>
+
+            <div class="glass-card p-5 space-y-3">
+                <h3 class="font-semibold text-lg border-b border-[var(--glass-border)] pb-2">Aylık Durum</h3>
+                <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Toplam Satış</span>
+                    <span class="font-medium" id="dash-month-sales">0 ₺</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-[var(--text-muted)]">Tahmini Prim</span>
+                    <span class="font-medium text-[var(--success)]" id="dash-month-premium">0 ₺</span>
+                </div>
+            </div>
+            
+            <div class="glass-card p-5">
+                <canvas id="weeklyChart" height="200"></canvas>
+            </div>
+        </section>
+
+        <section id="view-entry" class="view-section space-y-4">
+            <form id="entry-form" class="space-y-4">
+                <div class="glass-card p-5 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Tarih</label>
+                        <input type="date" id="entry-date" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Satış Tutarı (TL)</label>
+                        <input type="number" id="entry-sales" step="0.01" min="0" required placeholder="0.00">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Çağrı Sayısı</label>
+                            <input type="number" id="entry-calls" min="0" required placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Paket Sayısı</label>
+                            <input type="number" id="entry-packages" min="0" required placeholder="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 space-y-4">
+                    <h3 class="font-semibold text-lg">Cezalar ve İhlaller</h3>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Geç Kalma</label>
+                        <select id="entry-late">
+                            <option value="0">Hiç (0 dk)</option>
+                            <option value="15">0-15 dakika</option>
+                            <option value="60">15-60 dakika</option>
+                            <option value="999">60+ dakika</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium">Mola İhlali Var Mı?</label>
+                        <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="entry-break" class="switch-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out"/>
+                            <label for="entry-break" class="switch-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out"></label>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium">400 Çağrı Altı Mı?</label>
+                        <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="entry-lowcalls" class="switch-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 transition-transform duration-200 ease-in-out"/>
+                            <label for="entry-lowcalls" class="switch-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-200 ease-in-out"></label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Hatalar</label>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="error-cb w-4 h-4" value="Yanlış ürün"> <span>Yanlış ürün</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="error-cb w-4 h-4" value="Yanlış fiyat"> <span>Yanlış fiyat</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="error-cb w-4 h-4" value="Yanlış adres"> <span>Yanlış adres</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="error-cb w-4 h-4" value="Yanlış kampanya"> <span>Yanlış kampanya</span></label>
+                            <label class="flex items-center space-x-2"><input type="checkbox" class="error-cb w-4 h-4" value="Yanlış kargo"> <span>Yanlış kargo</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Bonus (TL)</label>
+                        <input type="number" id="entry-bonus" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Notlar</label>
+                        <textarea id="entry-notes" rows="2" placeholder="İsteğe bağlı..."></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="primary shadow-lg shadow-blue-500/30">Kaydet</button>
+            </form>
+        </section>
+
+        <section id="view-reports" class="view-section space-y-4">
+            <div class="glass-card p-5 text-center">
+                <h3 class="font-semibold text-lg mb-2">Tüm Zamanların İstatistikleri</h3>
+                <div class="grid grid-cols-2 gap-4 text-left">
+                    <div>
+                        <p class="text-xs text-[var(--text-muted)]">Toplam Satış</p>
+                        <p class="font-bold" id="stat-total-sales">0 ₺</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-[var(--text-muted)]">En Yüksek Satış</p>
+                        <p class="font-bold text-[var(--success)]" id="stat-max-sales">0 ₺</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-[var(--text-muted)]">Toplam Çağrı</p>
+                        <p class="font-bold" id="stat-total-calls">0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-[var(--text-muted)]">Toplam Paket</p>
+                        <p class="font-bold" id="stat-total-packages">0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-[var(--text-muted)]">Toplam Bonus</p>
+                        <p class="font-bold" id="stat-total-bonus">0 ₺</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-[var(--text-muted)]">Toplam Net Prim</p>
+                        <p class="font-bold text-[var(--success)]" id="stat-total-premium">0 ₺</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-5">
+                <h3 class="font-semibold text-lg mb-4">Geçmiş Kayıtlar</h3>
+                <div id="history-list" class="space-y-3 max-h-96 overflow-y-auto"></div>
+            </div>
+        </section>
+
+        <section id="view-settings" class="view-section space-y-4">
+            <div class="glass-card p-5 space-y-4">
+                <h3 class="font-semibold text-lg border-b border-[var(--glass-border)] pb-2">Veri Yönetimi</h3>
+                <button onclick="appDB.exportJSON()" class="w-full bg-[var(--card-bg)] border border-[var(--glass-border)] p-3 rounded-xl font-medium text-left flex items-center justify-between">
+                    <span>Yedekle (JSON İndir)</span>
+                    <i class="ph ph-download-simple"></i>
+                </button>
+                
+                <div class="relative">
+                    <input type="file" id="import-file" accept=".json" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="appDB.importJSON(event)">
+                    <button class="w-full bg-[var(--card-bg)] border border-[var(--glass-border)] p-3 rounded-xl font-medium text-left flex items-center justify-between">
+                        <span>Geri Yükle (JSON Seç)</span>
+                        <i class="ph ph-upload-simple"></i>
+                    </button>
+                </div>
+                
+                <button onclick="appDB.clearAllData()" class="w-full bg-red-500/10 text-[var(--danger)] border border-red-500/20 p-3 rounded-xl font-medium text-left flex items-center justify-between mt-4">
+                    <span>Tüm Verileri Sil</span>
+                    <i class="ph ph-trash"></i>
+                </button>
+            </div>
+
+            <div class="glass-card p-5 space-y-2">
+                <h3 class="font-semibold text-lg border-b border-[var(--glass-border)] pb-2 mb-2">Uygulama Bilgisi</h3>
+                <p class="text-sm text-[var(--text-muted)]">Tamamen çevrimdışı çalışır. Verileriniz sadece bu cihazda saklanır. Güvenliğiniz için sunucu veya API kullanılmamaktadır.</p>
+                <p class="text-xs text-[var(--text-muted)] mt-2">v1.0.0</p>
+            </div>
+        </section>
+
+    </main>
+
+    <nav class="bottom-nav fixed bottom-0 w-full flex justify-around items-center pt-3 pb-8 z-50">
+        <button onclick="navigate('dashboard')" class="nav-item active flex flex-col items-center gap-1 w-1/4" id="nav-dashboard">
+            <i class="ph-fill ph-squares-four text-2xl"></i>
+            <span class="text-[10px] font-medium">Dashboard</span>
+        </button>
+        <button onclick="navigate('entry')" class="nav-item flex flex-col items-center gap-1 w-1/4" id="nav-entry">
+            <i class="ph ph-plus-circle text-2xl"></i>
+            <span class="text-[10px] font-medium">Kayıt</span>
+        </button>
+        <button onclick="navigate('reports')" class="nav-item flex flex-col items-center gap-1 w-1/4" id="nav-reports">
+            <i class="ph ph-chart-bar text-2xl"></i>
+            <span class="text-[10px] font-medium">Raporlar</span>
+        </button>
+        <button onclick="navigate('settings')" class="nav-item flex flex-col items-center gap-1 w-1/4" id="nav-settings">
+            <i class="ph ph-gear text-2xl"></i>
+            <span class="text-[10px] font-medium">Ayarlar</span>
+        </button>
+    </nav>
+
+    <script>
+        const appDB = {
+            dbName: 'PerformanceAppDB',
+            dbVersion: 1,
+            db: null,
+
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.dbVersion);
+                    request.onerror = (e) => reject(e.target.errorCode);
+                    request.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('records')) {
+                            const store = db.createObjectStore('records', { keyPath: 'date' });
+                            store.createIndex('date', 'date', { unique: true });
+                        }
+                    };
+                });
+            },
+
+            async saveRecord(record) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['records'], 'readwrite');
+                    const request = transaction.objectStore('records').put(record);
+                    request.onsuccess = () => resolve();
+                    request.onerror = (e) => reject(e);
+                });
+            },
+
+            async getAllRecords() {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['records'], 'readonly');
+                    const request = transaction.objectStore('records').getAll();
+                    request.onsuccess = (e) => resolve(e.target.result.sort((a,b) => new Date(b.date) - new Date(a.date)));
+                    request.onerror = (e) => reject(e);
+                });
+            },
+
+            async clearAllData() {
+                if(confirm("Tüm verileri silmek istediğinize emin misiniz?")) {
+                    const transaction = this.db.transaction(['records'], 'readwrite');
+                    transaction.objectStore('records').clear().onsuccess = () => { alert("Silindi."); updateUI(); };
+                }
+            },
+
+            async exportJSON() {
+                const records = await this.getAllRecords();
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records));
+                const a = document.createElement('a');
+                a.href = dataStr;
+                a.download = "yedek.json";
+                a.click();
+            },
+
+            importJSON(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        for(let r of data) await this.saveRecord(r);
+                        alert("Yüklendi!"); updateUI();
+                    } catch (err) { alert("Hata."); }
+                };
+                reader.readAsText(file);
+            }
+        };
+
+        const Calculator = {
+            monthlyTable: [
+                { min: 0, max: 999999, val: 0, type: 'fixed' },
+                { min: 1000000, max: 1099999, val: 11000, type: 'fixed' },
+                { min: 1100000, max: 1249999, val: 25000, type: 'fixed' },
+                { min: 1250000, max: 1499999, val: 45000, type: 'fixed' },
+                { min: 1500000, max: Infinity, val: 0.04, type: 'percent' }
+            ],
+
+            getDailyPremium(sales) {
+                if (sales < 2000) return 0;
+                let step = Math.floor(sales / 2000);
+                return Math.min(step * 100, 1500); 
+            },
+
+            getMonthlyPremium(totalSales) {
+                for(let t of this.monthlyTable) {
+                    if(totalSales >= t.min && totalSales <= t.max) {
+                        return t.type === 'fixed' ? t.val : totalSales * t.val;
+                    }
+                }
+                return 0;
+            },
+
+            calculateDailyNet(record) {
+                let premium = this.getDailyPremium(record.sales);
+                let penalty = 0;
+                if (record.latePenalty === "15") penalty += 100;
+                if (record.latePenalty === "60") penalty += 300;
+                if (record.latePenalty === "999") penalty += 500;
+                if (record.breakViolation) penalty += 200;
+                if (record.lowCalls) penalty += 100;
+                penalty += (record.errors.length * 50);
+                return Math.max(premium + record.bonus - penalty, 0); 
+            }
+        };
+
+        function formatTL(num) { return num.toLocaleString('tr-TR', { maximumFractionDigits: 0 }) + ' ₺'; }
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            return Math.ceil((((d - new Date(Date.UTC(d.getUTCFullYear(),0,1))) / 86400000) + 1)/7);
+        }
+
+        let currentChart = null;
+
+        async function updateUI() {
+            const records = await appDB.getAllRecords();
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayRecord = records.find(r => r.date === todayStr);
+
+            document.getElementById('dash-date').innerText = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+            
+            if (todayRecord) {
+                document.getElementById('dash-sales').innerText = formatTL(todayRecord.sales);
+                document.getElementById('dash-calls').innerText = todayRecord.calls;
+                document.getElementById('dash-packages').innerText = todayRecord.packages;
+                document.getElementById('dash-daily-premium').innerText = '+' + formatTL(Calculator.calculateDailyNet(todayRecord));
+            } else {
+                document.getElementById('dash-sales').innerText = "0 ₺";
+                document.getElementById('dash-calls').innerText = "0";
+                document.getElementById('dash-packages').innerText = "0";
+                document.getElementById('dash-daily-premium').innerText = "0 ₺";
+            }
+
+            const cWeek = getWeekNumber(new Date()), cMonth = new Date().getMonth(), cYear = new Date().getFullYear();
+            let wSales = 0, wDays = 0, mSales = 0, wLabels = [], wData = [];
+
+            records.forEach(r => {
+                let d = new Date(r.date);
+                if (d.getFullYear() === cYear) {
+                    if (d.getMonth() === cMonth) mSales += r.sales;
+                    if (getWeekNumber(d) === cWeek) {
+                        wSales += r.sales; wDays++;
+                        wLabels.unshift(d.toLocaleDateString('tr-TR', {weekday:'short'}));
+                        wData.unshift(r.sales);
+                    }
+                }
+            });
+
+            let wAvg = wDays > 0 ? wSales / wDays : 0;
+            document.getElementById('dash-week-avg').innerText = formatTL(wAvg);
+            document.getElementById('dash-week-premium').innerText = formatTL((Calculator.getDailyPremium(wAvg) / 2) * wDays);
+            document.getElementById('dash-month-sales').innerText = formatTL(mSales);
+            document.getElementById('dash-month-premium').innerText = formatTL(Calculator.getMonthlyPremium(mSales));
+
+            if(currentChart) currentChart.destroy();
+            currentChart = new Chart(document.getElementById('weeklyChart').getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: wLabels.length ? wLabels : ['Pzt','Sal','Çar','Per','Cum'],
+                    datasets: [{ label: 'Satış', data: wData.length ? wData : [0,0,0,0,0], backgroundColor: '#007aff', borderRadius: 6 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } }
+            });
+
+            // Raporlar Kısmı
+            let tSales=0, tCalls=0, tPack=0, tBonus=0, tPrem=0, mSale=0;
+            const list = document.getElementById('history-list'); list.innerHTML = '';
+            
+            records.forEach(r => {
+                tSales += r.sales; tCalls += r.calls; tPack += r.packages; tBonus += r.bonus;
+                let net = Calculator.calculateDailyNet(r); tPrem += net;
+                if(r.sales > mSale) mSale = r.sales;
+
+                list.innerHTML += `<div class="flex justify-between items-center p-3 bg-[var(--bg-color)] rounded-xl mb-2">
+                    <div><p class="font-medium">${new Date(r.date).toLocaleDateString('tr-TR')}</p><p class="text-xs text-[var(--text-muted)]">Satış: ${formatTL(r.sales)}</p></div>
+                    <div class="text-right"><p class="font-semibold text-[var(--success)]">+${formatTL(net)}</p></div></div>`;
+            });
+
+            document.getElementById('stat-total-sales').innerText = formatTL(tSales);
+            document.getElementById('stat-max-sales').innerText = formatTL(mSale);
+            document.getElementById('stat-total-calls').innerText = tCalls;
+            document.getElementById('stat-total-packages').innerText = tPack;
+            document.getElementById('stat-total-bonus').innerText = formatTL(tBonus);
+            document.getElementById('stat-total-premium').innerText = formatTL(tPrem);
+        }
+
+        function navigate(id) {
+            document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(e => { e.classList.remove('active'); e.querySelector('i').className = e.querySelector('i').className.replace('ph-fill', 'ph'); });
+            document.getElementById(`view-${id}`).classList.add('active');
+            let nav = document.getElementById(`nav-${id}`);
+            nav.classList.add('active'); nav.querySelector('i').className = nav.querySelector('i').className.replace('ph', 'ph-fill');
+            document.getElementById('page-title').innerText = {dashboard:'Dashboard', entry:'Kayıt', reports:'Raporlar', settings:'Ayarlar'}[id];
+            if (id === 'dashboard' || id === 'reports') updateUI();
+        }
+
+        document.getElementById('entry-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            let errs = []; document.querySelectorAll('.error-cb:checked').forEach(cb => errs.push(cb.value));
+            try {
+                await appDB.saveRecord({
+                    date: document.getElementById('entry-date').value,
+                    sales: parseFloat(document.getElementById('entry-sales').value) || 0,
+                    calls: parseInt(document.getElementById('entry-calls').value) || 0,
+                    packages: parseInt(document.getElementById('entry-packages').value) || 0,
+                    latePenalty: document.getElementById('entry-late').value,
+                    breakViolation: document.getElementById('entry-break').checked,
+                    lowCalls: document.getElementById('entry-lowcalls').checked,
+                    errors: errs,
+                    bonus: parseFloat(document.getElementById('entry-bonus').value) || 0,
+                    notes: document.getElementById('entry-notes').value
+                });
+                alert('Kaydedildi!'); e.target.reset(); 
+                document.getElementById('entry-date').value = new Date().toISOString().split('T')[0];
+                navigate('dashboard');
+            } catch (err) { alert('Hata.'); }
+        });
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('entry-date').value = new Date().toISOString().split('T')[0];
+            await appDB.init(); updateUI();
+        });
+    </script>
+</body>
+</html>
+
+
